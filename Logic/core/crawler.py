@@ -1,9 +1,9 @@
 from requests import get
 from bs4 import BeautifulSoup
-from collections import deque
 from concurrent.futures import ThreadPoolExecutor, wait
 from threading import Lock
 import json
+import time
 
 
 class IMDbCrawler:
@@ -11,7 +11,8 @@ class IMDbCrawler:
     put your own user agent in the headers
     """
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
+        'Accept-Language': 'en-US',
     }
     top_250_URL = 'https://www.imdb.com/chart/top/'
     BASE_MOVIE_URL = 'https://www.imdb.com/title/'
@@ -25,11 +26,10 @@ class IMDbCrawler:
         crawling_threshold: int
             The number of pages to crawl
         """
-        # TODO
         self.crawling_threshold = crawling_threshold
-        self.not_crawled = deque([])
+        self.not_crawled = []
         self.crawled = []
-        self.added_ids = []
+        self.added_ids = set()
         self.add_list_lock = Lock()
         self.add_queue_lock = Lock()
 
@@ -71,14 +71,17 @@ class IMDbCrawler:
         """
         Read the crawled files from json
         """
-        # TODO
         with open('IMDB_crawled.json', 'r') as f:
-            self.crawled = None
+            crawled_data = f.read()
+            f.close()
+            self.crawled = json.loads(crawled_data)
 
-        with open('IMDB_not_crawled.json', 'w') as f:
-            self.not_crawled = None
+        with open('IMDB_not_crawled.json', 'r') as f:
+            not_crawled_data = f.read()
+            f.close()
+            self.not_crawled = json.loads(not_crawled_data)
 
-        self.added_ids = None
+        self.added_ids = [movie_info['id'] for movie_info in self.crawled]
 
     def crawl(self, URL):
         """
@@ -99,7 +102,14 @@ class IMDbCrawler:
         """
         Extract the top 250 movies from the top 250 page and use them as seed for the crawler to start crawling.
         """
-        # TODO update self.not_crawled and self.added_ids
+        top_250_soup = self.get_soup(self.top_250_URL)
+        anchors = top_250_soup.select('a[href]')
+        for anchor in anchors:
+            if anchor['href'].startswith('/title'):
+                movie_id = anchor['href'].split('/')[2]
+                url = self.BASE_MOVIE_URL + movie_id
+                if url not in self.not_crawled:
+                    self.not_crawled.append(url)
 
     def get_imdb_instance(self):
         return {
@@ -126,30 +136,27 @@ class IMDbCrawler:
     def start_crawling(self):
         """
         Start crawling the movies until the crawling threshold is reached.
-        TODO: 
-            replace WHILE_LOOP_CONSTRAINTS with the proper constraints for the while loop.
-            replace NEW_URL with the new URL to crawl.
-            replace THERE_IS_NOTHING_TO_CRAWL with the condition to check if there is nothing to crawl.
-            delete help variables.
 
         ThreadPoolExecutor is used to make the crawler faster by using multiple threads to crawl the pages.
         You are free to use it or not. If used, not to forget safe access to the shared resources.
         """
+        # Populate not_crawled if empty
+        if len(self.not_crawled) == 0:
+            self.extract_top_250()
 
-        # help variables
-        WHILE_LOOP_CONSTRAINTS = None
-        NEW_URL = None
-        THERE_IS_NOTHING_TO_CRAWL = None
-
-        self.extract_top_250()
         futures = []
         crawled_counter = 0
 
-        with ThreadPoolExecutor(max_workers=20) as executor:
-            while WHILE_LOOP_CONSTRAINTS:
-                URL = NEW_URL
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            while len(self.crawled) < self.crawling_threshold:
+                self.add_queue_lock.acquire()
+                URL = self.not_crawled.pop(0)
+                self.add_queue_lock.release()
                 futures.append(executor.submit(self.crawl_page_info, URL))
-                if THERE_IS_NOTHING_TO_CRAWL:
+                crawled_counter += 1
+                if crawled_counter % 10 == 0:
+                    print(f"Crawled {crawled_counter}")
+                if len(self.not_crawled) == 0:
                     wait(futures)
                     futures = []
 
@@ -163,14 +170,53 @@ class IMDbCrawler:
         URL: str
             The URL of the site
         """
-        print("new iteration")
-        return self.extract_movie_info(
-            soup=self.get_soup(URL),
-            movie=self.get_imdb_instance(),
-            URL=URL,
-        )
+        movie_id = self.get_id_from_URL(URL)
+        if movie_id in self.added_ids:
+            return
 
-    def extract_movie_info(self, soup, movie, URL):
+        print(f"new iteration id={movie_id}")
+
+        soup = self.get_soup(URL)
+        time.sleep(1)
+        mpaa_soup = self.get_soup(self.get_mpaa_link(URL))
+        time.sleep(1)
+        summary_soup = self.get_soup(self.get_summary_link(URL))
+        time.sleep(1)
+        review_soup = self.get_soup(self.get_review_link(URL))
+
+        if soup is not None and mpaa_soup is not None and summary_soup is not None and review_soup is not None:
+            movie = self.extract_movie_info(
+                soup=soup,
+                mpaa_soup=mpaa_soup,
+                summary_soup=summary_soup,
+                review_soup=review_soup,
+                movie=self.get_imdb_instance(),
+                URL=URL,
+            )
+            # Add movie to crawled data & it's id to added ids
+            self.add_list_lock.acquire()
+
+            if movie_id not in self.added_ids:
+                self.crawled.append(movie)
+                self.added_ids.add(movie_id)
+
+            # Add related movies url to not crawled list
+            self.add_queue_lock.acquire()
+            for related_link in movie['related_links']:
+                related_id = self.get_id_from_URL(related_link)
+                if related_id not in self.added_ids and related_link not in self.not_crawled:
+                    self.not_crawled.append(related_link)
+            self.add_queue_lock.release()
+
+            self.add_list_lock.release()
+        else:
+            # Add failed crawl url to not_crawled
+            self.add_queue_lock.acquire()
+            self.not_crawled.append(URL)
+            self.add_queue_lock.release()
+            print(f"crawl failed for id={movie_id}")
+
+    def extract_movie_info(self, soup, mpaa_soup, summary_soup, review_soup, movie, URL):
         """
         Extract the information of the movie from the response and save it in the movie instance.
 
@@ -198,17 +244,11 @@ class IMDbCrawler:
         movie['countries_of_origin'] = self.get_countries_of_origin(soup)
         movie['rating'] = self.get_rating(soup)
 
-        mpaa_url = self.get_mpaa_link(URL)
-        mpaa_soup = self.get_soup(mpaa_url)
         movie['mpaa'] = self.get_mpaa(mpaa_soup)
 
-        summary_url = self.get_summary_link(URL)
-        summary_soup = self.get_soup(summary_url)
         movie['summaries'] = self.get_summary(summary_soup)
         movie['synopsis'] = self.get_synopsis(summary_soup)
 
-        review_url = self.get_review_link(URL)
-        review_soup = self.get_soup(review_url)
         movie['reviews'] = self.get_reviews_with_scores(review_soup)
 
         return movie
@@ -407,7 +447,7 @@ class IMDbCrawler:
                 spans = section.find_all('span')
                 for span in spans:
                     if span.text == 'More like this':
-                        anchors = span.find_all('a', class_='ipc-lockup-overlay ipc-focusable')
+                        anchors = section.find_all('a', class_='ipc-lockup-overlay ipc-focusable')
                         for anchor in anchors:
                             movie_id = anchor['href'].split('/')[2]
                             movie_link = self.BASE_MOVIE_URL + movie_id
@@ -551,7 +591,7 @@ class IMDbCrawler:
                 rating_divs = parent_div.find_all('div', class_='sc-acdbf0f3-1 kCTJoV')
                 for div in rating_divs:
                     if div.text == 'IMDb RATING':
-                        rating_spans = div.find_all('span', class_='sc-bde20123-1 cMEQkK')
+                        rating_spans = parent_div.find_all('span', class_='sc-bde20123-1 cMEQkK')
                         for span in rating_spans:
                             rating = span.text
                             break
@@ -738,8 +778,8 @@ class IMDbCrawler:
 
 
 def main():
-    imdb_crawler = IMDbCrawler(crawling_threshold=600)
-    # imdb_crawler.read_from_file_as_json()
+    imdb_crawler = IMDbCrawler(crawling_threshold=1000)
+    imdb_crawler.read_from_file_as_json()
     imdb_crawler.start_crawling()
     imdb_crawler.write_to_file_as_json()
 
