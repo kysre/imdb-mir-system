@@ -1,3 +1,6 @@
+from preprocess import Preprocessor
+
+
 class Snippet:
     def __init__(self, number_of_words_on_each_side=5):
         """
@@ -24,10 +27,9 @@ class Snippet:
         str
             The query without stop words.
         """
-
-        # TODO: remove stop words from the query.
-
-        return
+        preprocessor = Preprocessor(documents=[])
+        query = preprocessor.normalize(query)
+        return query
 
     def find_snippet(self, doc, query):
         """
@@ -44,13 +46,38 @@ class Snippet:
         -------
         final_snippet : str
             The final extracted snippet. IMPORTANT: The keyword should be wrapped by *** on both sides.
-            For example: Sahwshank ***redemption*** is one of ... (for query: redemption)
+            For example: Shawshank ***redemption*** is one of ... (for query: redemption)
         not_exist_words : list
             Words in the query which don't exist in the doc.
         """
-        final_snippet = ""
-        not_exist_words = []
+        query = self.remove_stop_words_from_query(query)
 
-        # TODO: Extract snippet and the tokens which are not present in the doc.
+        doc_words = doc.split()
+        query_words = query.split()
+        not_exist_words_set = set(query_words)
+        chosen_words = [0] * len(doc_words)
+
+        for i, word in enumerate(doc_words):
+            if word in query_words:
+                chosen_words[i] = 1
+                not_exist_words_set.discard(word)
+
+        for i, val in enumerate(chosen_words):
+            if val == 1:
+                j = 1
+                while j <= self.number_of_words_on_each_side:
+                    if i + j < len(doc_words) and chosen_words[i + j] != 1:
+                        chosen_words[i + j] = 2
+                    if i - j >= 0 and chosen_words[i - j] != 1:
+                        chosen_words[i + j] = 2
+                    j += 1
+
+        snippet_words = []
+        for i, word in enumerate(doc_words):
+            if chosen_words[i] != 0:
+                snippet_words.append(word)
+
+        not_exist_words = list(not_exist_words_set)
+        final_snippet = ' '.join(snippet_words)
 
         return final_snippet, not_exist_words

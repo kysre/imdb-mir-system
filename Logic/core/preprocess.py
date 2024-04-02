@@ -37,8 +37,6 @@ class Preprocessor:
         preprocessed_documents = []
         for document in self.documents:
             text = document
-            text = self.remove_links(text)
-            text = self.remove_punctuations(text)
             text = self.normalize(text)
             preprocessed_documents.append(text)
         return preprocessed_documents
@@ -58,6 +56,10 @@ class Preprocessor:
             The normalized text.
         """
         text = text.lower()
+
+        text = self.remove_links(text)
+
+        text = self.remove_punctuations(text)
 
         non_stopwords = self.remove_stopwords(text)
         text = ' '.join(non_stopwords)
