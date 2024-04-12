@@ -61,7 +61,20 @@ class Tiered_index:
         first_tier = {}
         second_tier = {}
         third_tier = {}
-        # TODO
+
+        for term in current_index:
+            first_tier[term] = {}
+            second_tier[term] = {}
+            third_tier[term] = {}
+            for doc_id in current_index[term]:
+                tf = current_index[term][doc_id]
+                if tf >= first_tier_threshold:
+                    first_tier[term][doc_id] = tf
+                elif second_tier_threshold <= tf < first_tier_threshold:
+                    second_tier[term][doc_id] = tf
+                else:
+                    third_tier[term][doc_id] = tf
+
         return {
             "first_tier": first_tier,
             "second_tier": second_tier,

@@ -2,6 +2,9 @@ import time
 import os
 import json
 import copy
+from typing import Dict, List
+
+from tiered_index import Tiered_index
 from indexes_enum import Indexes
 
 
@@ -10,15 +13,15 @@ class Index:
         """
         Create a class for indexing.
         """
-
         self.preprocessed_documents = preprocessed_documents
-
         self.index = {
             Indexes.DOCUMENTS.value: self.index_documents(),
             Indexes.STARS.value: self.index_stars(),
             Indexes.GENRES.value: self.index_genres(),
             Indexes.SUMMARIES.value: self.index_summaries(),
         }
+        self.documents_index = self.index_documents()
+        self.sorted_ids = sorted(self.documents_index.keys())
 
     def index_documents(self):
         """
@@ -30,11 +33,20 @@ class Index:
         dict
             The index of the documents based on the document ID.
         """
-
         current_index = {}
-        #         TODO
-
+        for document in self.preprocessed_documents:
+            document_id = document['id']
+            current_index[document_id] = document
         return current_index
+
+    def add_terms_to_index_dic(self, index_dic: Dict, terms: List[str], doc_id: str) -> Dict:
+        for term in terms:
+            if term not in index_dic:
+                index_dic[term] = {doc_id: 0}
+            if doc_id not in index_dic[term]:
+                index_dic[term][doc_id] = 0
+            index_dic[term][doc_id] += 1
+        return index_dic
 
     def index_stars(self):
         """
@@ -46,9 +58,13 @@ class Index:
             The index of the documents based on the stars. You should also store each terms' tf in each document.
             So the index type is: {term: {document_id: tf}}
         """
-
-        #         TODO
-        pass
+        stars_index = {}
+        for doc_id in self.sorted_ids:
+            doc = self.documents_index[doc_id]
+            for name in doc['stars']:
+                terms = name.split()
+                stars_index = self.add_terms_to_index_dic(stars_index, terms, doc_id)
+        return stars_index
 
     def index_genres(self):
         """
@@ -60,9 +76,13 @@ class Index:
             The index of the documents based on the genres. You should also store each terms' tf in each document.
             So the index type is: {term: {document_id: tf}}
         """
-
-        #         TODO
-        pass
+        genres_index = {}
+        for doc_id in self.sorted_ids:
+            doc = self.documents_index[doc_id]
+            for name in doc['genres']:
+                terms = name.split()
+                genres_index = self.add_terms_to_index_dic(genres_index, terms, doc_id)
+        return genres_index
 
     def index_summaries(self):
         """
@@ -74,11 +94,13 @@ class Index:
             The index of the documents based on the summaries. You should also store each terms' tf in each document.
             So the index type is: {term: {document_id: tf}}
         """
-
-        current_index = {}
-        #         TODO
-
-        return current_index
+        summaries_index = {}
+        for doc_id in self.sorted_ids:
+            doc = self.documents_index[doc_id]
+            for name in doc['summaries']:
+                terms = name.split()
+                summaries_index = self.add_terms_to_index_dic(summaries_index, terms, doc_id)
+        return summaries_index
 
     def get_posting_list(self, word: str, index_type: str):
         """
@@ -96,10 +118,8 @@ class Index:
         list
             posting list of the word (you should return the list of document IDs that contain the word and ignore the tf)
         """
-
         try:
-            #         TODO
-            pass
+            return list(self.index[index_type][word].keys())
         except:
             return []
 
@@ -112,9 +132,22 @@ class Index:
         document : dict
             Document to add to all the indexes
         """
-
-        #         TODO
-        pass
+        document_id = document['id']
+        if id in self.index[Indexes.DOCUMENTS.value]:
+            return
+        self.index[Indexes.DOCUMENTS.value][document_id] = document
+        current_index = self.index[Indexes.STARS.value]
+        for name in document['stars']:
+            terms = name.split()
+            current_index = self.add_terms_to_index_dic(current_index, terms, document_id)
+        current_index = self.index[Indexes.GENRES.value]
+        for name in document['genres']:
+            terms = name.split()
+            current_index = self.add_terms_to_index_dic(current_index, terms, document_id)
+        current_index = self.index[Indexes.SUMMARIES.value]
+        for name in document['summaries']:
+            terms = name.split()
+            current_index = self.add_terms_to_index_dic(current_index, terms, document_id)
 
     def remove_document_from_index(self, document_id: str):
         """
@@ -125,9 +158,27 @@ class Index:
         document_id : str
             ID of the document to remove from all the indexes
         """
-
-        #         TODO
-        pass
+        if document_id not in self.index[Indexes.DOCUMENTS.value]:
+            return
+        document = self.index[Indexes.DOCUMENTS.value][document_id]
+        current_index = self.index[Indexes.STARS.value]
+        for name in document['stars']:
+            terms = name.split()
+            for term in terms:
+                if term in current_index:
+                    current_index[term].pop(document_id, None)
+        current_index = self.index[Indexes.GENRES.value]
+        for name in document['genres']:
+            terms = name.split()
+            for term in terms:
+                if term in current_index:
+                    current_index[term].pop(document_id, None)
+        current_index = self.index[Indexes.SUMMARIES.value]
+        for name in document['summaries']:
+            terms = name.split()
+            for term in terms:
+                if term in current_index:
+                    current_index[term].pop(document_id, None)
 
     def check_add_remove_is_correct(self):
         """
@@ -149,26 +200,31 @@ class Index:
             print('Add is incorrect, document')
             return
 
-        if (set(index_after_add[Indexes.STARS.value]['tim']).difference(set(index_before_add[Indexes.STARS.value]['tim']))
+        if (set(index_after_add[Indexes.STARS.value]['tim']).difference(
+                set(index_before_add[Indexes.STARS.value]['tim']))
                 != {dummy_document['id']}):
             print('Add is incorrect, tim')
             return
 
-        if (set(index_after_add[Indexes.STARS.value]['henry']).difference(set(index_before_add[Indexes.STARS.value]['henry']))
+        if (set(index_after_add[Indexes.STARS.value]['henry']).difference(
+                set(index_before_add[Indexes.STARS.value]['henry']))
                 != {dummy_document['id']}):
             print('Add is incorrect, henry')
             return
-        if (set(index_after_add[Indexes.GENRES.value]['drama']).difference(set(index_before_add[Indexes.GENRES.value]['drama']))
+        if (set(index_after_add[Indexes.GENRES.value]['drama']).difference(
+                set(index_before_add[Indexes.GENRES.value]['drama']))
                 != {dummy_document['id']}):
             print('Add is incorrect, drama')
             return
 
-        if (set(index_after_add[Indexes.GENRES.value]['crime']).difference(set(index_before_add[Indexes.GENRES.value]['crime']))
+        if (set(index_after_add[Indexes.GENRES.value]['crime']).difference(
+                set(index_before_add[Indexes.GENRES.value]['crime']))
                 != {dummy_document['id']}):
             print('Add is incorrect, crime')
             return
 
-        if (set(index_after_add[Indexes.SUMMARIES.value]['good']).difference(set(index_before_add[Indexes.SUMMARIES.value]['good']))
+        if (set(index_after_add[Indexes.SUMMARIES.value]['good']).difference(
+                set(index_before_add[Indexes.SUMMARIES.value]['good']))
                 != {dummy_document['id']}):
             print('Add is incorrect, good')
             return
@@ -200,14 +256,15 @@ class Index:
             os.makedirs(path)
 
         if index_type is None:
-            # TODO
-            pass
+            Tiered_index(path)
+            return
 
         if index_type not in self.index:
             raise ValueError('Invalid index type')
 
-        #         TODO
-        pass
+        with open(path + f'{index_type}_index.json', 'w') as f:
+            f.write(json.dumps(self.index[index_type]))
+            f.close()
 
     def load_index(self, path: str):
         """
@@ -218,9 +275,10 @@ class Index:
         path : str
             Path to load the file
         """
-
-        #         TODO
-        pass
+        for index_type in Indexes:
+            with open(f'{path}/{index_type.value}_index.json', 'r') as f:
+                self.index[index_type.value] = json.loads(f.read())
+                f.close()
 
     def check_if_index_loaded_correctly(self, index_type: str, loaded_index: dict):
         """
@@ -238,7 +296,6 @@ class Index:
         bool
             True if index is loaded correctly, False otherwise
         """
-
         return self.index[index_type] == loaded_index
 
     def check_if_indexing_is_good(self, index_type: str, check_word: str = 'good'):
