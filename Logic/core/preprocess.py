@@ -56,6 +56,9 @@ class Preprocessor:
             The normalized text.
         """
         text = text.lower()
+        text = re.sub(r'\n', ' ', text)
+        text = re.sub(r'\s+', ' ', text)
+        text.strip()
 
         text = self.remove_links(text)
 
