@@ -2,8 +2,8 @@ import json
 import numpy as np
 from .preprocess import Preprocessor
 from .scorer import Scorer
-from .indexes_enum import Indexes, Index_types
-from .index_reader import Index_reader
+from indexer.indexes_enum import Indexes, Index_types
+from indexer.index_reader import Index_reader
 
 
 class SearchEngine:
@@ -12,7 +12,7 @@ class SearchEngine:
         Initializes the search engine.
 
         """
-        path = '/index'
+        path = '/home/kysre/Documents/kysre/imdb-mir-system/Logic/data/index'
         self.document_indexes = {
             Indexes.STARS: Index_reader(path, Indexes.STARS),
             Indexes.GENRES: Index_reader(path, Indexes.GENRES),
@@ -30,7 +30,7 @@ class SearchEngine:
         }
         self.metadata_index = Index_reader(path, Indexes.DOCUMENTS, Index_types.METADATA)
 
-    def search(self, query, method, weights, safe_ranking = True, max_results=10):
+    def search(self, query, method, weights, safe_ranking=True, max_results=10):
         """
         searches for the query in the indexes.
 
@@ -66,7 +66,7 @@ class SearchEngine:
         final_scores = {}
 
         self.aggregate_scores(weights, scores, final_scores)
-        
+
         result = sorted(final_scores.items(), key=lambda x: x[1], reverse=True)
         if max_results is not None:
             result = result[:max_results]
@@ -86,8 +86,12 @@ class SearchEngine:
         final_scores : dict
             The final scores of the documents.
         """
-        # TODO
-        pass
+        for doc_id, score_dict in scores.items():
+            agg_score = 0
+            for field in weights:
+                if field in score_dict:
+                    agg_score += score_dict[field] * weights[field]
+            final_scores[doc_id] = agg_score
 
     def find_scores_with_unsafe_ranking(self, query, method, weights, max_results, scores):
         """
@@ -108,8 +112,12 @@ class SearchEngine:
         """
         for field in weights:
             for tier in ["first_tier", "second_tier", "third_tier"]:
-                #TODO
-                pass
+                tiered_field_index = self.tiered_index[field].index[tier]
+                scorer = Scorer(tiered_field_index, self.metadata_index.index['document_count'])
+                results = self.get_results_by_scorer(scorer, field, query, method)
+                scores = self.merge_scores(scores, results, field)
+            if len(scores.keys()) >= max_results:
+                break
 
     def find_scores_with_safe_ranking(self, query, method, weights, scores):
         """
@@ -126,12 +134,23 @@ class SearchEngine:
         scores : dict
             The scores of the documents.
         """
-
         for field in weights:
-            #TODO
-            pass
+            field_indexes = self.document_indexes[field].index
+            scorer = Scorer(field_indexes, self.metadata_index.index['document_count'])
+            results = self.get_results_by_scorer(scorer, field, query, method)
+            scores = self.merge_scores(scores, results, field)
 
-    def merge_scores(self, scores1, scores2):
+    def get_results_by_scorer(self, scorer, field, query, method):
+        if method == 'OkapiBM25':
+            return scorer.compute_scores_with_okapi_bm25(
+                query,
+                self.metadata_index.index['average_document_length'][field.value],
+                self.document_lengths_index[field].index
+            )
+        else:
+            return scorer.compute_scores_with_vector_space_model(query, method)
+
+    def merge_scores(self, scores1, scores2, field):
         """
         Merges two dictionaries of scores.
 
@@ -147,8 +166,13 @@ class SearchEngine:
         dict
             The merged dictionary of scores.
         """
-
-        #TODO
+        merged_scores = scores1.copy()
+        for doc_id in scores2.keys():
+            if doc_id in merged_scores:
+                scores1[doc_id][field] = (scores1[doc_id][field] + scores2[doc_id][field]) / 2
+            else:
+                merged_scores[doc_id] = {field: scores2[doc_id][field]}
+        return merged_scores
 
 
 if __name__ == '__main__':
