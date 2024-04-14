@@ -4,7 +4,7 @@ from index_reader import Index_reader
 
 
 class DocumentLengthsIndex:
-    def __init__(self, path='index/'):
+    def __init__(self, path='data/index/'):
         """
         Initializes the DocumentLengthsIndex class.
 
@@ -44,8 +44,8 @@ class DocumentLengthsIndex:
         for doc_id in self.documents_index:
             if doc_id in documents_length_index:
                 pass
-            if where.value != Indexes.SUMMARIES.value:
-                length = len(self.documents_index[doc_id][where.value])
+            if where != Indexes.SUMMARIES.value:
+                length = len(self.documents_index[doc_id][where])
             else:
                 length = 0
                 for summary in self.documents_index[doc_id][Indexes.SUMMARIES.value]:
@@ -71,4 +71,3 @@ class DocumentLengthsIndex:
 
 if __name__ == '__main__':
     document_lengths_index = DocumentLengthsIndex()
-    print('Document lengths index stored successfully.')

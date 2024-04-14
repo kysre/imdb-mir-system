@@ -3,7 +3,7 @@ from core.search import SearchEngine
 from core.spell_correction import SpellCorrection
 from core.preprocess import Preprocessor
 from core.snippet import Snippet
-from core.indexes_enum import Indexes, Index_types
+from core.indexer.indexes_enum import Indexes, Index_types
 import json
 
 movies_dataset = None  # TODO

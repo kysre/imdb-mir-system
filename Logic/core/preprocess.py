@@ -175,5 +175,5 @@ if __name__ == "__main__":
     preprocessor = Preprocessor(data)
     preprocessed_documents = preprocessor.preprocess()
     with open('data/preprocessed.json', 'w') as f:
-        f.write(json.dumps(preprocessed_documents))
+        f.write(json.dumps(preprocessed_documents, indent=4))
         f.close()

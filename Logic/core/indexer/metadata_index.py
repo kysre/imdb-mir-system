@@ -14,16 +14,14 @@ class Metadata_index:
             The path to the indexes.
         """
         self.documents = self.read_documents()
-        self.metadata_index = self.create_metadata_index()
-        self.store_metadata_index(path)
+        self.metadata_index = {}
 
     def read_documents(self):
         """
         Reads the documents.
         
         """
-        # TODO: check file name
-        with open('data/preprocessed_duplicate_checked.json', 'r') as f:
+        with open('data/preprocessed.json', 'r') as f:
             data = json.loads(f.read())
             f.close()
         return data
@@ -32,7 +30,7 @@ class Metadata_index:
         """
         Creates the metadata index.
         """
-        return {
+        self.metadata_index = {
             'average_document_length': {
                 'stars': self.get_average_document_field_length('stars'),
                 'genres': self.get_average_document_field_length('genres'),
@@ -74,4 +72,6 @@ class Metadata_index:
 
 
 if __name__ == "__main__":
-    meta_index = Metadata_index()
+    metadata_index = Metadata_index()
+    metadata_index.create_metadata_index()
+    metadata_index.store_metadata_index('data/index/')

@@ -14,14 +14,14 @@ class Index:
         Create a class for indexing.
         """
         self.preprocessed_documents = preprocessed_documents
+        self.documents_index = self.index_documents()
+        self.sorted_ids = sorted(self.documents_index.keys())
         self.index = {
             Indexes.DOCUMENTS.value: self.index_documents(),
             Indexes.STARS.value: self.index_stars(),
             Indexes.GENRES.value: self.index_genres(),
             Indexes.SUMMARIES.value: self.index_summaries(),
         }
-        self.documents_index = self.index_documents()
-        self.sorted_ids = sorted(self.documents_index.keys())
 
     def index_documents(self):
         """
@@ -133,17 +133,20 @@ class Index:
             Document to add to all the indexes
         """
         document_id = document['id']
-        if id in self.index[Indexes.DOCUMENTS.value]:
+        if document_id in self.index[Indexes.DOCUMENTS.value]:
             return
         self.index[Indexes.DOCUMENTS.value][document_id] = document
+
         current_index = self.index[Indexes.STARS.value]
         for name in document['stars']:
             terms = name.split()
             current_index = self.add_terms_to_index_dic(current_index, terms, document_id)
+
         current_index = self.index[Indexes.GENRES.value]
         for name in document['genres']:
             terms = name.split()
             current_index = self.add_terms_to_index_dic(current_index, terms, document_id)
+
         current_index = self.index[Indexes.SUMMARIES.value]
         for name in document['summaries']:
             terms = name.split()
@@ -187,7 +190,7 @@ class Index:
 
         dummy_document = {
             'id': '100',
-            'stars': ['tim', 'henry'],
+            'stars': ['tim', 'daniel'],
             'genres': ['drama', 'crime'],
             'summaries': ['good']
         }
@@ -206,10 +209,10 @@ class Index:
             print('Add is incorrect, tim')
             return
 
-        if (set(index_after_add[Indexes.STARS.value]['henry']).difference(
-                set(index_before_add[Indexes.STARS.value]['henry']))
+        if (set(index_after_add[Indexes.STARS.value]['daniel']).difference(
+                set(index_before_add[Indexes.STARS.value]['daniel']))
                 != {dummy_document['id']}):
-            print('Add is incorrect, henry')
+            print('Add is incorrect, daniel')
             return
         if (set(index_after_add[Indexes.GENRES.value]['drama']).difference(
                 set(index_before_add[Indexes.GENRES.value]['drama']))
@@ -263,7 +266,7 @@ class Index:
             raise ValueError('Invalid index type')
 
         with open(path + f'{index_type}_index.json', 'w') as f:
-            f.write(json.dumps(self.index[index_type]))
+            f.write(json.dumps(self.index[index_type], indent=4))
             f.close()
 
     def load_index(self, path: str):
@@ -359,4 +362,39 @@ class Index:
             print('Indexing is wrong')
             return False
 
-# TODO: Run the class with needed parameters, then run check methods and finally report the results of check methods
+
+if __name__ == "__main__":
+    with open('data/preprocessed.json', 'r') as f:
+        preprocessed_data = json.loads(f.read())
+        f.close()
+
+    index_obj = Index(preprocessed_data)
+
+    index_obj.check_add_remove_is_correct()
+
+    print('summaries index result:')
+    index_obj.check_if_indexing_is_good('summaries')
+    index_obj.check_if_indexing_is_good('summaries', 'django')
+    print('genres index result:')
+    index_obj.check_if_indexing_is_good('genres', 'crime')
+    index_obj.check_if_indexing_is_good('genres', 'drama')
+    print('stars index result:')
+    index_obj.check_if_indexing_is_good('stars', 'dicaprio')
+    index_obj.check_if_indexing_is_good('stars', 'travolta')
+
+    index_path = 'data/index'
+    for index_type in Indexes:
+        index_obj.store_index(f'{index_path}/', index_type.value)
+
+    #######################
+    index_obj.load_index(index_path)
+
+    for index_type in Indexes:
+        with open(f'{index_path}/{index_type.value}_index.json', 'r') as f:
+            index = json.loads(f.read())
+            f.close()
+        ok = index_obj.check_if_index_loaded_correctly(index_type.value, index)
+        if ok:
+            print(f'{index_type.value} loaded correctly')
+        else:
+            print(f'{index_type.value} loaded wrong')
