@@ -34,7 +34,11 @@ class MinHashLSH:
         set
             A set of shingles.
         """
-        shingles = None
+        shingles = set()
+        words = document.split()
+        for i in range(len(words) - k + 1):
+            shingle = ' '.join(words[i:i + k])
+            shingles.add(shingle)
         return shingles
 
     def build_characteristic_matrix(self):
@@ -110,8 +114,9 @@ class MinHashLSH:
         float
             Jaccard score.
         """
-        # TODO
-        pass
+        intersection = len(first_set.intersection(second_set))
+        union = len(first_set.union(second_set))
+        return intersection / union if union != 0 else 0
 
     def jaccard_similarity_test(self, buckets, all_documents):
         """

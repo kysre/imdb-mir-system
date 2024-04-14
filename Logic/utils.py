@@ -1,6 +1,7 @@
 from typing import Dict, List
 from core.search import SearchEngine
 from core.spell_correction import SpellCorrection
+from core.preprocess import Preprocessor
 from core.snippet import Snippet
 from core.indexes_enum import Indexes, Index_types
 import json
@@ -24,19 +25,20 @@ def correct_text(text: str, all_documents: List[str]) -> str:
     str
         The corrected form of the given text
     """
-    # TODO: You can add any preprocessing steps here, if needed!
-    spell_correction_obj = SpellCorrection(all_documents)
-    text = spell_correction_obj.spell_check(text)
+    spell_corrector = SpellCorrection(all_documents)
+    text = spell_corrector.spell_check(text)
+    preprocessor = Preprocessor([])
+    text = preprocessor.normalize(text)
     return text
 
 
 def search(
-    query: str,
-    max_result_count: int,
-    method: str = "ltn-lnn",
-    weights: list = [0.3, 0.3, 0.4],
-    should_print=False,
-    preferred_genre: str = None,
+        query: str,
+        max_result_count: int,
+        method: str = "ltn-lnn",
+        weights: list = [0.3, 0.3, 0.4],
+        should_print=False,
+        preferred_genre: str = None,
 ):
     """
     Finds relevant documents to query
@@ -61,7 +63,11 @@ def search(
     list
     Retrieved documents with snippet
     """
-    weights = ...  # TODO
+    weights = {
+        Indexes.STARS: weights[0],
+        Indexes.GENRES: weights[1],
+        Indexes.SUMMARIES: weights[2]
+    }
     return search_engine.search(
         query, method, weights, max_results=max_result_count, safe_ranking=True
     )
@@ -97,7 +103,8 @@ def get_movie_by_id(id: str, movies_dataset: List[Dict[str, str]]) -> Dict[str, 
     )
 
     result["Image_URL"] = (
-        "https://m.media-amazon.com/images/M/MV5BNDE3ODcxYzMtY2YzZC00NmNlLWJiNDMtZDViZWM2MzIxZDYwXkEyXkFqcGdeQXVyNjAwNDUxODI@._V1_.jpg"  # a default picture for selected movies
+        "https://m.media-amazon.com/images/M/MV5BNDE3ODcxYzMtY2YzZC00NmNlLWJiNDMtZDViZWM2MzIxZDYwXkEyXkFqcGdeQXVyNjAwNDUxODI@._V1_.jpg"
+        # a default picture for selected movies
     )
     result["URL"] = (
         f"https://www.imdb.com/title/{result['id']}"  # The url pattern of IMDb movies
