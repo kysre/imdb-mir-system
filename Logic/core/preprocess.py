@@ -1,8 +1,10 @@
+import json
 import string
 import re
 from typing import List
 
 import nltk
+import unidecode
 
 
 class Preprocessor:
@@ -36,9 +38,25 @@ class Preprocessor:
         """
         preprocessed_documents = []
         for document in self.documents:
-            text = document
-            text = self.normalize(text)
-            preprocessed_documents.append(text)
+            if isinstance(document, str):
+                self.documents = [self.normalize(document)]
+                preprocessed_documents.extend(self.documents.copy())
+                break
+            else:
+                for key in document:
+                    if isinstance(document[key], list):
+                        preprocessed_doc = []
+                        if len(document[key]) != 0:
+                            if isinstance(document[key][0], list):
+                                # reviews
+                                for review, score in document[key]:
+                                    preprocessed_doc.append([self.normalize(review), score])
+                            else:
+                                preprocessed_doc = [self.normalize(text) for text in document[key]]
+                        document[key] = preprocessed_doc
+                    else:
+                        document[key] = self.normalize(document[key])
+            preprocessed_documents.append(document)
         return preprocessed_documents
 
     def normalize(self, text: str):
@@ -55,6 +73,7 @@ class Preprocessor:
         str
             The normalized text.
         """
+        text = unidecode.unidecode(text)
         text = text.lower()
         text = re.sub(r'\n', ' ', text)
         text = re.sub(r'\s+', ' ', text)
@@ -147,3 +166,14 @@ class Preprocessor:
             if word not in self.stopwords:
                 non_stopwords.append(word)
         return non_stopwords
+
+
+if __name__ == "__main__":
+    with open('data/IMDB_crawled.json', 'r') as f:
+        data = json.loads(f.read())
+        f.close()
+    preprocessor = Preprocessor(data)
+    preprocessed_documents = preprocessor.preprocess()
+    with open('data/preprocessed.json', 'w') as f:
+        f.write(json.dumps(preprocessed_documents))
+        f.close()
