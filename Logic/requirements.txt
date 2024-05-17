@@ -48,3 +48,14 @@ urllib3==2.2.1
 wandb==0.16.6
 wasabi==1.1.2
 weasel==0.3.4
+spacy==3.7.4
+nltk
+matplotlib
+seaborn
+wandb
+scikit-learn
+sphinx
+myst_parser
+sphinx-book-theme
+networkx
+fasttext

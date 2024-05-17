@@ -1,6 +1,7 @@
+import json
+
 from indexes_enum import Indexes, Index_types
 from index_reader import Index_reader
-import json
 
 
 class Tiered_index:
