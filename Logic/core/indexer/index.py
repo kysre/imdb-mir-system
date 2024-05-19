@@ -259,15 +259,16 @@ class Index:
 
         if index_name not in self.index:
             raise ValueError('Invalid index name')
+
         if index_type is None:
             Tiered_index(path)
             return
 
-        if index_type not in self.index:
+        if index_type.value not in self.index:
             raise ValueError('Invalid index type')
 
-        with open(path + f'{index_type}_index.json', 'w') as f:
-            f.write(json.dumps(self.index[index_type], indent=4))
+        with open(path + f'{index_type.value}_index.json', 'w') as f:
+            f.write(json.dumps(self.index[index_type.value], indent=4))
             f.close()
 
     def load_index(self, path: str):

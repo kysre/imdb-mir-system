@@ -73,6 +73,9 @@ class Preprocessor:
         str
             The normalized text.
         """
+        if text is None:
+            return ''
+
         text = unidecode.unidecode(text)
         text = text.lower()
         text = re.sub(r'\n', ' ', text)
