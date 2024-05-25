@@ -5,14 +5,17 @@ from typing import List
 
 import nltk
 import unidecode
+from tqdm import tqdm
 
 
 class Preprocessor:
     @classmethod
-    def get_stopwords(cls) -> List[str]:
-        with open('data/stopwords.txt', 'r') as f:
-            stopwords = f.read()
-        return stopwords.split()
+    def get_stopwords(cls, use_local_stopwords=False) -> List[str]:
+        if use_local_stopwords:
+            with open('data/stopwords.txt', 'r') as f:
+                stopwords = f.read()
+            return stopwords.split()
+        return nltk.corpus.stopwords.words('english')
 
     def __init__(self, documents: list):
         """
@@ -37,14 +40,18 @@ class Preprocessor:
             The preprocessed documents.
         """
         preprocessed_documents = []
-        for document in self.documents:
+        for document in tqdm(self.documents):
             if isinstance(document, str):
                 self.documents = [self.normalize(document)]
                 preprocessed_documents.extend(self.documents.copy())
                 break
             else:
+                none_count = 0
                 for key in document:
-                    if isinstance(document[key], list):
+                    if document[key] is None:
+                        none_count += 1
+                        document[key] = self.get_default(key)
+                    elif isinstance(document[key], list):
                         preprocessed_doc = []
                         if len(document[key]) != 0:
                             if isinstance(document[key][0], list):
@@ -56,8 +63,34 @@ class Preprocessor:
                         document[key] = preprocessed_doc
                     else:
                         document[key] = self.normalize(document[key])
-            preprocessed_documents.append(document)
+            if none_count < len(document.keys()) - 1:
+                preprocessed_documents.append(document)
         return preprocessed_documents
+
+    def get_default(self, key: str):
+        """
+        returns a default value for None fields
+        """
+        default_dict = {
+            'title': '',  # str
+            'first_page_summary': '',  # str
+            'release_year': '',  # str
+            'mpaa': '',  # str
+            'budget': '',  # str
+            'gross_worldwide': '',  # str
+            'rating': '',  # str
+            'directors': [],  # List[str]
+            'writers': [],  # List[str]
+            'stars': [],  # List[str]
+            'related_links': [],  # List[str]
+            'genres': [],  # List[str]
+            'languages': [],  # List[str]
+            'countries_of_origin': [],  # List[str]
+            'summaries': [],  # List[str]
+            'synopsis': [],  # List[str]
+            'reviews': [],  # List[List[str]]
+        }
+        return default_dict.get(key, None)
 
     def normalize(self, text: str):
         """
@@ -73,8 +106,6 @@ class Preprocessor:
         str
             The normalized text.
         """
-        if text is None:
-            return ''
 
         text = unidecode.unidecode(text)
         text = text.lower()

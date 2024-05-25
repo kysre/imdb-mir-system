@@ -1,16 +1,21 @@
 import fasttext
 import re
+import string
+import math
 
+import unidecode
 from tqdm import tqdm
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from nltk import pos_tag
+from nltk.stem import WordNetLemmatizer
 from scipy.spatial import distance
 
-from .fasttext_data_loader import FastTextDataLoader
+from fasttext_data_loader import FastTextDataLoader
 
 
 def preprocess_text(text, minimum_length=1, stopword_removal=True, stopwords_domain=[], lower_case=True,
-                       punctuation_removal=True):
+                    punctuation_removal=True):
     """
     preprocess text by removing stopwords, punctuations, and converting to lowercase, and also filter based on a min length
     for stopwords use nltk.corpus.stopwords.words('english')
@@ -31,7 +36,36 @@ def preprocess_text(text, minimum_length=1, stopword_removal=True, stopwords_dom
     punctuation_removal: bool
         whether to remove punctuations
     """
-    pass
+    if lower_case:
+        text = text.lower()
+    text = unidecode.unidecode(text)
+    text = re.sub(r'\n', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'<br\s*/?>', '', text)
+    text.strip()
+    if punctuation_removal:
+        translator = str.maketrans('', '', string.punctuation)
+        text = text.translate(translator)
+    stop_words = set(stopwords.words('english'))
+    stop_words.update(stopwords_domain)
+    if stopword_removal:
+        new_text = ''
+        lemmatizer = WordNetLemmatizer()
+        tokens = pos_tag(word_tokenize(text))
+        for token in tokens:
+            word, tag = token
+            if word not in stopwords_domain and len(word) > minimum_length:
+                wntag = tag[0].lower()
+                wntag = wntag if wntag in ['a', 'r', 'n', 'v'] else None
+                if not wntag:
+                    lemma = word
+                else:
+                    lemma = lemmatizer.lemmatize(word, wntag)
+
+                new_text = new_text + lemma + ' '
+        text = new_text
+    return text.strip()
+
 
 class FastText:
     """
@@ -57,8 +91,7 @@ class FastText:
         self.method = method
         self.model = None
 
-
-    def train(self, texts):
+    def train(self, texts, text_file_path='data/FastText_data.txt', should_load_data=False):
         """
         Trains the FastText model with the given texts.
 
@@ -67,7 +100,16 @@ class FastText:
         texts : list of str
             The texts to train the FastText model.
         """
-        pass
+        if should_load_data:
+            all_text = ''
+            for text in tqdm(texts):
+                all_text += text + '\n'
+            with open(text_file_path, 'w', encoding='utf-8') as file:
+                file.write(all_text)
+                file.close()
+
+        self.model = fasttext.train_unsupervised(text_file_path, model=self.method)
+        print("Model trained successfully")
 
     def get_query_embedding(self, query):
         """
@@ -87,7 +129,8 @@ class FastText:
         np.ndarray
             The embedding for the query.
         """
-        pass
+        preprocessed_query = preprocess_text(query)
+        return self.model.get_sentence_vector(preprocessed_query)
 
     def analogy(self, word1, word2, word3):
         """
@@ -102,20 +145,28 @@ class FastText:
             str: The word that completes the analogy.
         """
         # Obtain word embeddings for the words in the analogy
-        # TODO
+        embedding1 = self.model[word1]
+        embedding2 = self.model[word2]
+        embedding3 = self.model[word3]
 
         # Perform vector arithmetic
-        # TODO
+        v = embedding3 + embedding2 - embedding1
 
         # Create a dictionary mapping each word in the vocabulary to its corresponding vector
-        # TODO
+        words = list(self.model.words.copy())
 
         # Exclude the input words from the possible results
-        # TODO
+        words = list(set(words).difference([word1, word2, word3]))
 
         # Find the word whose vector is closest to the result vector
-        # TODO
-        pass
+        c_score = math.inf
+        chosen_vector = None
+        for word in words:
+            score = distance.cosine(v, self.model[word])
+            if score < c_score:
+                c_score = score
+                chosen_vector = word
+        return chosen_vector
 
     def save_model(self, path='FastText_model.bin'):
         """
@@ -126,7 +177,7 @@ class FastText:
         path : str, optional
             The path to save the FastText model.
         """
-        pass
+        self.model.save_model(path)
 
     def load_model(self, path="FastText_model.bin"):
         """
@@ -137,7 +188,7 @@ class FastText:
         path : str, optional
             The path to load the FastText model.
         """
-        pass
+        self.model = fasttext.load_model(path)
 
     def prepare(self, dataset, mode, save=False, path='FastText_model.bin'):
         """
@@ -157,16 +208,15 @@ class FastText:
         if save:
             self.save_model(path)
 
+
 if __name__ == "__main__":
-    ft_model = FastText(preprocessor=preprocess_text, method='skipgram')
+    ft_model = FastText(method='skipgram')
 
-    path = './Phase_1/index/'
-    ft_data_loader = FastTextDataLoader()
+    path = 'data/IMDB_crawled.json'
+    ft_data_loader = FastTextDataLoader(preprocess=preprocess_text, file_path=path)
 
-    X = ft_data_loader.create_train_data(path)
-
-    ft_model.train(X)
-    ft_model.prepare(None, mode = "save")
+    X, y = ft_data_loader.create_train_data()
+    ft_model.prepare(X, mode="train", path='data/FastText_model.bin', save=True)
 
     print(10 * "*" + "Similarity" + 10 * "*")
     word = 'queen'
@@ -179,4 +229,5 @@ if __name__ == "__main__":
     word1 = "man"
     word2 = "king"
     word3 = "queen"
-    print(f"Similarity between {word1} and {word2} is like similarity between {word3} and {ft_model.analogy(word1, word2, word3)}")
+    print(
+        f"Similarity between {word1} and {word2} is like similarity between {word3} and {ft_model.analogy(word1, word2, word3)}")
