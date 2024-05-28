@@ -11,7 +11,7 @@ from nltk import pos_tag
 from nltk.stem import WordNetLemmatizer
 from scipy.spatial import distance
 
-from fasttext_data_loader import FastTextDataLoader
+from .fasttext_data_loader import FastTextDataLoader
 
 
 def preprocess_text(text, minimum_length=1, stopword_removal=True, stopwords_domain=[], lower_case=True,
@@ -168,7 +168,7 @@ class FastText:
                 chosen_vector = word
         return chosen_vector
 
-    def save_model(self, path='FastText_model.bin'):
+    def save_model(self, path='data/FastText_model.bin'):
         """
         Saves the FastText model to a file.
 
@@ -179,7 +179,7 @@ class FastText:
         """
         self.model.save_model(path)
 
-    def load_model(self, path="FastText_model.bin"):
+    def load_model(self, path="data/FastText_model.bin"):
         """
         Loads the FastText model from a file.
 
@@ -190,7 +190,7 @@ class FastText:
         """
         self.model = fasttext.load_model(path)
 
-    def prepare(self, dataset, mode, save=False, path='FastText_model.bin'):
+    def prepare(self, dataset, mode, save=False, path='/Users/divar/University/term-8/information-retrieval/imdb-mir-system/Logic/data/FastText_model.bin'):
         """
         Prepares the FastText model.
 
