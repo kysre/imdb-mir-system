@@ -10,7 +10,7 @@ from word_embedding.fasttext_model import FastText, preprocess_text
 class ReviewLoader:
     def __init__(
             self,
-            file_path: str = '/Users/divar/University/term-8/information-retrieval/imdb-mir-system/Logic/data/classification.csv',
+            file_path: str = '/Users/divar/University/term-8/information-retrieval/imdb-mir-system/Logic/data/classification.pkl',
             comments_path: str = '/Users/divar/University/term-8/information-retrieval/imdb-mir-system/Logic/data/comments_training.csv'
     ):
         self.file_path = file_path
@@ -29,17 +29,18 @@ class ReviewLoader:
         """
         self.df = pd.read_csv(self.comments_path)
         self.df['review'] = self.df['review'].apply(preprocess_text)
-        self.df['review_embeddings'] = self.df['review'].apply(self.fasttext_model.get_query_embedding)
+        self.df['review_embedding'] = self.df['review'].apply(self.fasttext_model.get_query_embedding)
         mymap = {'positive': 1, 'negative': 0}
         self.df['sentiment'] = self.df['sentiment'].apply(lambda s: mymap.get(s) if s in mymap else s)
-        self.df.to_csv(self.file_path)
+        self.df['review_embedding'] = self.df['review_embedding'].apply(list)
+        self.df.to_pickle(self.file_path)
 
     def load_data(self):
         """
         Load the data from the csv file and preprocess the text. Then save the normalized tokens and the sentiment labels.
         Also, load the fasttext model.
         """
-        self.df = pd.read_csv(self.file_path)
+        self.df = pd.read_pickle(self.file_path)
 
     def get_embeddings(self):
         """
@@ -61,10 +62,10 @@ class ReviewLoader:
             Return the training and testing data for the embeddings and the sentiments.
             in the order of x_train, x_test, y_train, y_test
         """
-        threshold = int(test_data_ratio * self.shape[0])
+        threshold = int(test_data_ratio * self.df.shape[0])
         train_df, test_df = train_test_split(self.df, test_size=threshold, random_state=42)
         return (
-            train_df['review_embeddings'].values, test_df['review_embeddings'].values,
+            train_df['review_embedding'].values, test_df['review_embedding'].values,
             train_df['sentiment'].values, test_df['sentiment'].values
         )
 
