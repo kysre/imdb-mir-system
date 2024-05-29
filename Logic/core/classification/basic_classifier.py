@@ -1,17 +1,10 @@
 import pickle
 
-import numpy as np
-from tqdm import tqdm
-
-from ..word_embedding.fasttext_model import FastText
-
 
 class BasicClassifier:
     def __init__(self, model_path):
         self.model = None
         self.path = model_path
-        self.fasttext_model = FastText()
-        self.fasttext_model.prepare(dataset=[], mode='load', save=False)
 
     def fit(self, x, y):
         raise NotImplementedError()

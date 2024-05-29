@@ -1,15 +1,33 @@
 import numpy as np
 from sklearn.metrics import classification_report
+from sklearn.decomposition import PCA
 from tqdm import tqdm
+import scipy.spatial
+from collections import Counter
 
-from .basic_classifier import BasicClassifier
-from .data_loader import ReviewLoader
+from basic_classifier import BasicClassifier
+from data_loader import ReviewLoader
+
+
+class KnnClassifierData:
+    def __init__(self):
+        self.k = None
+        self.pca = None
+        self.X_train = None
+        self.y_train = None
 
 
 class KnnClassifier(BasicClassifier):
     def __init__(self, n_neighbors):
-        super().__init__()
-        self.k = n_neighbors
+        super().__init__(
+            model_path='/Users/divar/University/term-8/information-retrieval/imdb-mir-system/'
+                       'Logic/data/classification/knn.pkl'
+        )
+        self.model = KnnClassifierData()
+        self.model.k = n_neighbors
+        self.model.pca = PCA(n_components=20)
+        self.model.X_train = None
+        self.model.y_train = None
 
     def fit(self, x, y):
         """
@@ -28,7 +46,9 @@ class KnnClassifier(BasicClassifier):
         self
             Returns self as a classifier
         """
-        pass
+        self.model.pca.fit(np.array(list(x)))
+        self.model.X_train = self.model.pca.transform(np.array(list(x)))
+        self.model.y_train = y
 
     def predict(self, x):
         """
@@ -42,7 +62,21 @@ class KnnClassifier(BasicClassifier):
             Return the predicted class for each doc
             with the highest probability (argmax)
         """
-        pass
+        x_reduced = self.model.pca.transform(np.array(list(x)))
+        predictions = []
+        for i in tqdm(range(len(x_reduced))):
+            d = []
+            votes = []
+            for j in range(len(self.model.X_train)):
+                dist = scipy.spatial.distance.euclidean(self.model.X_train[j], x_reduced[i])
+                d.append([dist, j])
+            d.sort()
+            d = d[0:self.model.k]
+            for d, j in d:
+                votes.append(y_train[j])
+            ans = Counter(votes).most_common(1)[0][0]
+            predictions.append(ans)
+        return predictions
 
     def prediction_report(self, x, y):
         """
@@ -57,7 +91,8 @@ class KnnClassifier(BasicClassifier):
         str
             Return the classification report
         """
-        pass
+        y_pred = self.predict(x)
+        return classification_report(y, y_pred)
 
 
 # F1 Accuracy : 70%
@@ -65,4 +100,11 @@ if __name__ == '__main__':
     """
     Fit the model with the training data and predict the test data, then print the classification report
     """
-    pass
+    loader = ReviewLoader()
+    loader.load_data()
+    classifier = KnnClassifier(n_neighbors=3)
+    x_train, x_test, y_train, y_test = loader.split_data()
+    classifier.fit(x_train, y_train)
+    classifier.save()
+    result = classifier.prediction_report(x_test, y_test)
+    print(result)
