@@ -4,8 +4,8 @@ import numpy as np
 from sklearn.metrics import classification_report
 from sklearn.svm import SVC
 
-from .basic_classifier import BasicClassifier
-from .data_loader import ReviewLoader
+from basic_classifier import BasicClassifier
+from data_loader import ReviewLoader
 
 
 class SVMClassifier(BasicClassifier):
@@ -67,8 +67,8 @@ if __name__ == '__main__':
     """
     loader = ReviewLoader()
     loader.load_data()
-    classifier = SVMClassifier()
     x_train, x_test, y_train, y_test = loader.split_data()
+    classifier = SVMClassifier()
     classifier.fit(x_train, y_train)
     classifier.save()
     result = classifier.prediction_report(x_test, y_test)

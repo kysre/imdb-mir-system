@@ -95,15 +95,16 @@ class KnnClassifier(BasicClassifier):
         return classification_report(y, y_pred)
 
 
-# F1 Accuracy : 70%
+# F1 accuracy : 70%
+# F1 acquired : 79%
 if __name__ == '__main__':
     """
     Fit the model with the training data and predict the test data, then print the classification report
     """
     loader = ReviewLoader()
     loader.load_data()
-    classifier = KnnClassifier(n_neighbors=3)
     x_train, x_test, y_train, y_test = loader.split_data()
+    classifier = KnnClassifier(n_neighbors=3)
     classifier.fit(x_train, y_train)
     classifier.save()
     result = classifier.prediction_report(x_test, y_test)

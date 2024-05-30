@@ -1,10 +1,7 @@
-import numpy as np
 import pandas as pd
-import tqdm
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
 
-from word_embedding.fasttext_model import FastText, preprocess_text
+from Logic.core.word_embedding.fasttext_model import FastText, preprocess_text
 
 
 class ReviewLoader:
