@@ -1,7 +1,7 @@
 import json
 import numpy as np
-from .preprocess import Preprocessor
-from .scorer import Scorer
+from utility.preprocess import Preprocessor
+from utility.scorer import Scorer
 from indexer.indexes_enum import Indexes, Index_types
 from indexer.index_reader import Index_reader
 
@@ -12,7 +12,7 @@ class SearchEngine:
         Initializes the search engine.
 
         """
-        path = '/home/kysre/Documents/kysre/imdb-mir-system/Logic/data/index'
+        path = '/Users/divar/University/term-8/information-retrieval/imdb-mir-system/Logic/data/index/'
         self.document_indexes = {
             Indexes.STARS: Index_reader(path, Indexes.STARS),
             Indexes.GENRES: Index_reader(path, Indexes.GENRES),
@@ -206,8 +206,13 @@ class SearchEngine:
             The parameter used in some smoothing methods to balance between the document
             probability and the collection probability. Defaults to 0.5.
         """
-        # TODO
-        pass
+        for field in weights:
+            field_indexes = self.document_indexes[field].index
+            scorer_obj = Scorer(field_indexes, self.metadata_index.index['document_count'])
+            results = scorer_obj.compute_scores_with_unigram_model(
+                query, smoothing_method, self.document_lengths_index[field].index, alpha, lamda
+            )
+            self.merge_scores(scores, results, field)
 
     def merge_scores(self, scores1, scores2, field):
         """
@@ -225,20 +230,25 @@ class SearchEngine:
         dict
             The merged dictionary of scores.
         """
-        merged_scores = scores1.copy()
-        for doc_id in scores2.keys():
-            if doc_id in merged_scores:
-                scores1[doc_id][field] = (scores1[doc_id][field] + scores2[doc_id][field]) / 2
+        # merged_scores = scores1.copy()
+        # for doc_id in scores2.keys():
+        #     if doc_id in merged_scores:
+        #         scores1[doc_id][field] = (scores1[doc_id][field] + scores2[doc_id][field]) / 2
+        #     else:
+        #         merged_scores[doc_id] = {field: scores2[doc_id][field]}
+        # return merged_scores
+        for doc_id, score in scores2.items():
+            if doc_id in scores1:
+                scores1[doc_id][field] = score
             else:
-                merged_scores[doc_id] = {field: scores2[doc_id][field]}
-        return merged_scores
+                scores1[doc_id] = {field: score}
 
 
 if __name__ == "__main__":
     search_engine = SearchEngine()
     query = "spider man in wonderland"
     method = "lnc.ltc"
+    # method = "unigram"
     weights = {Indexes.STARS: 1, Indexes.GENRES: 1, Indexes.SUMMARIES: 1}
     result = search_engine.search(query, method, weights)
-
     print(result)

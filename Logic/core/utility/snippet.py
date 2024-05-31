@@ -1,4 +1,4 @@
-from preprocess import Preprocessor
+from Logic.core.utility.preprocess import Preprocessor
 
 
 class Snippet:

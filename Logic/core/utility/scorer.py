@@ -19,6 +19,9 @@ class Scorer:
         self.index = index
         self.idf = {}
         self.N = number_of_documents
+        self.total_term_count = 0
+        for term, posting in index.items():
+            self.total_term_count += sum(list(posting.values()))
 
     def get_list_of_documents(self, query):
         """
@@ -274,12 +277,16 @@ class Scorer:
 
         Returns
         -------
-        float
+        dict
             A dictionary of the document IDs and their scores.
         """
-
-        # TODO
-        pass
+        documents = self.get_list_of_documents(query)
+        document_scores = {}
+        for document_id in documents:
+            document_scores[document_id] = self.compute_score_with_unigram_model(
+                query, document_id, smoothing_method, document_lengths, alpha, lamda
+            )
+        return document_scores
 
     def compute_score_with_unigram_model(
             self, query, document_id, smoothing_method, document_lengths, alpha, lamda
@@ -309,6 +316,16 @@ class Scorer:
         float
             The Unigram score of the document for the query.
         """
-
-        # TODO
-        pass
+        score = 1
+        for term in query:
+            posting = self.index.get(term, {})
+            tf = posting.get(document_id, 0)
+            if smoothing_method == 'naive':
+                score *= (tf / document_lengths[document_id])
+            else:
+                cf = sum(list(posting.values()))
+                if smoothing_method == 'bayes':
+                    score *= ((tf + alpha * (cf / self.total_term_count)) / (document_lengths[document_id] + alpha))
+                else:
+                    score *= (lamda * (tf / document_lengths[document_id]) + (1 - lamda) * (cf / self.total_term_count))
+        return score

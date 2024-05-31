@@ -4,8 +4,8 @@ import json
 import copy
 from typing import Dict, List
 
-from tiered_index import Tiered_index
-from indexes_enum import Indexes
+from .tiered_index import Tiered_index
+from .indexes_enum import Indexes
 
 
 class Index:
