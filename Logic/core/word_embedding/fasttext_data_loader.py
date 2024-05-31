@@ -6,10 +6,6 @@ from tqdm import tqdm
 from sklearn.preprocessing import LabelEncoder
 
 
-# from ..indexer.index_reader import Index_reader
-# from ..indexer.indexes_enum import Indexes, Index_types
-
-
 class FastTextDataLoader:
     """
     This class is designed to load and pre-process data for training a FastText model.
@@ -77,7 +73,8 @@ class FastTextDataLoader:
                 'title': self.preprocess(title),
                 'synopsis': self.preprocess(' '.join(synopsis)),
                 'summaries': self.preprocess(' '.join(summaries)),
-                'reviews': self.preprocess(' '.join(x[0] for x in ([['', '']] if reviews is None or len(reviews) == 0 else reviews))),
+                'reviews': self.preprocess(
+                    ' '.join(x[0] for x in ([['', '']] if reviews is None or len(reviews) == 0 else reviews))),
                 'genres': self.preprocess(genres),
             })
         return pd.DataFrame(data)

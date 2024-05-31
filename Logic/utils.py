@@ -1,10 +1,8 @@
 from typing import Dict, List
-from core.search import SearchEngine
-from core.spell_correction import SpellCorrection
-from core.preprocess import Preprocessor
-from core.snippet import Snippet
-from core.indexer.indexes_enum import Indexes, Index_types
-import json
+from search import SearchEngine
+from utility.spell_correction import SpellCorrection
+from utility.preprocess import Preprocessor
+from indexer.indexes_enum import Indexes
 
 movies_dataset = None  # TODO: load your movies dataset (from the json file you saved your indexes in), here
 

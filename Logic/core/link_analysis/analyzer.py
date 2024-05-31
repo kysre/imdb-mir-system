@@ -2,6 +2,7 @@ from .graph import LinkGraph
 from ..indexer.indexes_enum import Indexes
 from ..indexer.index_reader import Index_reader
 
+
 class LinkAnalyzer:
     def __init__(self, root_set):
         """
@@ -30,7 +31,7 @@ class LinkAnalyzer:
         This function has no parameters. You can use self to get or change attributes
         """
         for movie in self.root_set:
-            #TODO
+            # TODO
             pass
 
     def expand_graph(self, corpus):
@@ -50,7 +51,7 @@ class LinkAnalyzer:
         and refer to the nodes in the root set to the graph and to the list of hubs and authorities.
         """
         for movie in corpus:
-            #TODO
+            # TODO
             pass
 
     def hits(self, num_iteration=5, max_result=10):
@@ -74,14 +75,15 @@ class LinkAnalyzer:
         a_s = []
         h_s = []
 
-        #TODO
+        # TODO
 
         return a_s, h_s
 
+
 if __name__ == "__main__":
     # You can use this section to run and test the results of your link analyzer
-    corpus = []    # TODO: it shoud be your crawled data
-    root_set = []   # TODO: it shoud be a subset of your corpus
+    corpus = []  # TODO: it should be your crawled data
+    root_set = []  # TODO: it should be a subset of your corpus
 
     analyzer = LinkAnalyzer(root_set=root_set)
     analyzer.expand_graph(corpus=corpus)
