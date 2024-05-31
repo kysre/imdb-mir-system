@@ -6,8 +6,8 @@ from sklearn.metrics import classification_report
 from sklearn.metrics import f1_score
 from tqdm import tqdm
 
-from data_loader import ReviewLoader
-from basic_classifier import BasicClassifier
+from .data_loader import ReviewLoader
+from .basic_classifier import BasicClassifier
 
 
 class ReviewDataSet(Dataset):

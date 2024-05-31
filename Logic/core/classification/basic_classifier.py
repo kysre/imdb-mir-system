@@ -2,7 +2,6 @@ import pickle
 
 import numpy as np
 
-from Logic.core.word_embedding.fasttext_model import FastText
 
 
 class BasicClassifier:
@@ -39,8 +38,8 @@ class BasicClassifier:
         float
             The percentage of positive reviews
         """
-        fasttext_model = FastText()
-        fasttext_model.prepare(dataset=[], mode='load', save=False)
-        embeddings = np.array([fasttext_model.get_query_embedding(sent) for sent in sentences])
-        pred = self.predict(embeddings)
-        return sum(pred) / len(pred)
+        # fasttext_model = FastText()
+        # fasttext_model.prepare(dataset=[], mode='load', save=False)
+        # embeddings = np.array([fasttext_model.get_query_embedding(sent) for sent in sentences])
+        # pred = self.predict(embeddings)
+        # return sum(pred) / len(pred)

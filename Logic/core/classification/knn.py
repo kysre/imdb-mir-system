@@ -5,8 +5,8 @@ from tqdm import tqdm
 import scipy.spatial
 from collections import Counter
 
-from basic_classifier import BasicClassifier
-from data_loader import ReviewLoader
+from .basic_classifier import BasicClassifier
+from .data_loader import ReviewLoader
 
 
 class KnnClassifierData:

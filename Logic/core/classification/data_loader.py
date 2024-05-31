@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from Logic.core.word_embedding.fasttext_model import FastText, preprocess_text
+from word_embedding.fasttext_model import FastText, preprocess_text
 
 
 class ReviewLoader:
